@@ -154,33 +154,106 @@
   });
 
   // ==========================================
-  // Data Fetching
+  // Data Fetching & Normalization (All 250 Nations)
   // ==========================================
-  async function fetchCountryData() {
-    const API_URL = 'https://restcountries.com/v3.1/all?fields=name,capital,region,subregion,population,area,flags,currencies,languages,borders,cca2,cca3,latlng,timezones,maps';
+  function normalizeCountriesData(rawData) {
+    return rawData.map(c => {
+      const cca2 = (c.cca2 || '').toLowerCase();
+      const commonName = c.name?.common || 'Unknown';
+      const officialName = c.name?.official || commonName;
 
+      let cap = [];
+      if (Array.isArray(c.capital)) {
+        cap = c.capital;
+      } else if (typeof c.capital === 'string' && c.capital) {
+        cap = [c.capital];
+      }
+
+      let currs = null;
+      if (c.currencies && typeof c.currencies === 'object') {
+        currs = c.currencies;
+      }
+
+      return {
+        name: {
+          common: commonName,
+          official: officialName
+        },
+        capital: cap,
+        region: c.region || 'World',
+        subregion: c.subregion || '',
+        population: typeof c.population === 'number' ? c.population : 0,
+        area: typeof c.area === 'number' ? c.area : 0,
+        flags: {
+          png: `https://flagcdn.com/w320/${cca2}.png`,
+          svg: `https://flagcdn.com/${cca2}.svg`,
+          alt: `Flag of ${commonName}`
+        },
+        currencies: currs,
+        languages: (c.languages && typeof c.languages === 'object') ? c.languages : null,
+        borders: Array.isArray(c.borders) ? c.borders : [],
+        cca2: c.cca2 || '',
+        cca3: c.cca3 || '',
+        latlng: Array.isArray(c.latlng) ? c.latlng : [],
+        timezones: Array.isArray(c.timezones) ? c.timezones : [],
+        maps: {
+          googleMaps: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(commonName)}`
+        }
+      };
+    });
+  }
+
+  async function fetchCountryData() {
+    const DATA_URL = 'https://raw.githubusercontent.com/mledoze/countries/master/countries.json';
+
+    // 1. Try local storage cache for instant 0ms startup
+    try {
+      const cached = localStorage.getItem('world_explorer_full_countries_v1');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 200) {
+          state.allCountries = parsed;
+          populateGlobalStats(parsed);
+          populateSubregions(parsed);
+          populateCompareDropdowns(parsed);
+          applyFiltersAndSort();
+          // Silently refresh in background
+          refreshCountriesInBackground(DATA_URL);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Cache lookup failed', e);
+    }
+
+    // 2. Fetch full global countries dataset
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 7000);
 
-      const response = await fetch(API_URL, { signal: controller.signal });
+      const response = await fetch(DATA_URL, { signal: controller.signal });
       clearTimeout(timeoutId);
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
+      const rawData = await response.json();
 
-      if (Array.isArray(data) && data.length > 0) {
-        state.allCountries = data;
-        populateGlobalStats(data);
-        populateSubregions(data);
-        populateCompareDropdowns(data);
+      if (Array.isArray(rawData) && rawData.length > 0) {
+        const normalized = normalizeCountriesData(rawData);
+        state.allCountries = normalized;
+        try {
+          localStorage.setItem('world_explorer_full_countries_v1', JSON.stringify(normalized));
+        } catch (e) {}
+
+        populateGlobalStats(normalized);
+        populateSubregions(normalized);
+        populateCompareDropdowns(normalized);
         applyFiltersAndSort();
-        showToast(`Loaded ${data.length} nations worldwide!`, 'fa-globe');
+        showToast(`Loaded all ${normalized.length} nations worldwide!`, 'fa-globe');
         return;
       }
-      throw new Error('Invalid data structure');
+      throw new Error('Invalid data payload');
     } catch (err) {
-      console.warn('REST Countries API unreachable. Using bundled fallback dataset.', err);
+      console.warn('Network dataset unavailable. Using bundled offline dataset.', err);
       if (typeof FALLBACK_COUNTRIES !== 'undefined' && FALLBACK_COUNTRIES.length > 0) {
         state.allCountries = FALLBACK_COUNTRIES;
         populateGlobalStats(FALLBACK_COUNTRIES);
@@ -199,6 +272,22 @@
         `;
       }
     }
+  }
+
+  async function refreshCountriesInBackground(url) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const raw = await res.json();
+      if (Array.isArray(raw) && raw.length > 200) {
+        const norm = normalizeCountriesData(raw);
+        state.allCountries = norm;
+        localStorage.setItem('world_explorer_full_countries_v1', JSON.stringify(norm));
+        populateGlobalStats(norm);
+        populateSubregions(norm);
+        populateCompareDropdowns(norm);
+      }
+    } catch (e) {}
   }
 
   // Populate Global Stats Header
@@ -504,6 +593,8 @@
 
     // Open Modal
     DOM.countryModal.classList.add('open');
+    const modalDialog = DOM.countryModal.querySelector('.modal-dialog');
+    if (modalDialog) modalDialog.scrollTop = 0;
     document.body.style.overflow = 'hidden';
   }
 
@@ -531,10 +622,9 @@
       maxZoom: 10
     });
 
-    // Dark tile layer for gorgeous aesthetic
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a>, OpenStreetMap contributors',
-      subdomains: 'abcd',
+    // High quality OpenStreetMap tiles (100% free, no API key required, no watermark)
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19
     }).addTo(state.leafletMap);
 
@@ -802,9 +892,13 @@
       DOM.controlsSection.style.display = 'none';
       DOM.mapViewContainer.classList.add('active');
       initLeafletMap();
+      renderMapMarkers();
       setTimeout(() => {
         if (state.leafletMap) state.leafletMap.invalidateSize();
-      }, 200);
+      }, 100);
+      setTimeout(() => {
+        if (state.leafletMap) state.leafletMap.invalidateSize();
+      }, 350);
     } else if (viewName === 'quiz') {
       DOM.viewQuizBtn.classList.add('active');
       DOM.countriesGrid.style.display = 'none';
@@ -832,18 +926,32 @@
   DOM.searchInput.addEventListener('input', (e) => {
     clearTimeout(searchTimeout);
     const val = e.target.value;
-    DOM.searchClearBtn.style.display = val ? 'block' : 'none';
+    DOM.searchClearBtn.style.display = val.trim().length > 0 ? 'flex' : 'none';
     searchTimeout = setTimeout(() => {
       state.searchQuery = val;
       applyFiltersAndSort();
-    }, 250);
+    }, 200);
   });
 
-  DOM.searchClearBtn.addEventListener('click', () => {
+  // Ensure 'x' click stops propagation, clears search, hides 'x', and focuses input
+  DOM.searchClearBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     DOM.searchInput.value = '';
     DOM.searchClearBtn.style.display = 'none';
     state.searchQuery = '';
+    DOM.searchInput.focus();
     applyFiltersAndSort();
+  });
+
+  // Clear search on Escape key
+  DOM.searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && DOM.searchInput.value) {
+      DOM.searchInput.value = '';
+      DOM.searchClearBtn.style.display = 'none';
+      state.searchQuery = '';
+      applyFiltersAndSort();
+    }
   });
 
   // Region pills click
