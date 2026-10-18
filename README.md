@@ -33,14 +33,6 @@
 
 ---
 
-## 🚀 Live Demo & Preview
-
-To run the application locally:
-1. Run `node server.js` to start the local development server at `http://localhost:3000/`.
-2. Or simply double-click `index.html` in your file explorer to open it directly in any modern browser.
-
----
-
 ## 📁 Project Structure
 
 ```text
@@ -78,16 +70,6 @@ git remote add origin https://github.com/bashirahmed-Developer/world-explorer.gi
 # 6. Push to GitHub
 git push -u origin main
 ```
-
----
-
-## ⚡ Deployment to Vercel
-
-1. Go to [vercel.com](https://vercel.com) and log in with your GitHub account.
-2. Click **"Add New..."** > **"Project"**.
-3. Select your `world-explorer` repository.
-4. Keep the default settings (Framework Preset: **Other**) and click **Deploy**.
-5. Your project will be live with an SSL certificate and fast global CDN within seconds!
 
 ---
 
