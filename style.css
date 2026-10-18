@@ -769,6 +769,79 @@ body::after {
 }
 
 /* ==========================================================================
+   Explore More Countries Button
+   ========================================================================== */
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem 1rem 1rem;
+  width: 100%;
+}
+
+.load-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 2.5rem;
+  background: var(--accent-gradient);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.35);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.load-more-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.load-more-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.55), 0 0 25px rgba(139, 92, 246, 0.4);
+}
+
+.load-more-btn:hover::before {
+  opacity: 1;
+}
+
+.load-more-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.load-more-btn i {
+  font-size: 1.2rem;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.load-more-btn:hover i {
+  transform: rotate(180deg);
+}
+
+.load-more-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.65rem;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-full);
+  font-size: 0.825rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
    Interactive Map View Container
    ========================================================================== */
 .map-view-container {

@@ -12,6 +12,8 @@
   const state = {
     allCountries: [],
     filteredCountries: [],
+    visibleCount: 20,
+    PAGE_SIZE: 20,
     favorites: JSON.parse(localStorage.getItem('world_explorer_favs') || '[]'),
     theme: localStorage.getItem('world_explorer_theme') || 'dark',
     currentView: 'cards', // 'cards' | 'map' | 'quiz' | 'favorites'
@@ -62,6 +64,9 @@
     totalAvailableCount: document.getElementById('totalAvailableCount'),
     activeFilterBadgeContainer: document.getElementById('activeFilterBadgeContainer'),
     countriesGrid: document.getElementById('countriesGrid'),
+    loadMoreContainer: document.getElementById('loadMoreContainer'),
+    loadMoreBtn: document.getElementById('loadMoreBtn'),
+    loadMoreBadge: document.getElementById('loadMoreBadge'),
     mapViewContainer: document.getElementById('mapViewContainer'),
     quizSection: document.getElementById('quizSection'),
     
@@ -366,9 +371,13 @@
   }
 
   // ==========================================
-  // Filtering & Sorting
+  // Filtering, Sorting & Pagination (20 Cards Per Batch)
   // ==========================================
-  function applyFiltersAndSort() {
+  function applyFiltersAndSort(resetPagination = true) {
+    if (resetPagination) {
+      state.visibleCount = state.PAGE_SIZE;
+    }
+
     let list = [...state.allCountries];
 
     // Filter by Favorites View
@@ -423,17 +432,39 @@
     });
 
     state.filteredCountries = list;
-    renderCountriesGrid(list);
-    updateResultsMeta(list.length);
+    const countriesToShow = list.slice(0, state.visibleCount);
+    renderCountriesGrid(countriesToShow);
+    updateLoadMoreButton(list.length);
+    updateResultsMeta(countriesToShow.length, list.length);
   }
 
-  function updateResultsMeta(count) {
-    DOM.displayedCount.textContent = count;
-    DOM.totalAvailableCount.textContent = state.allCountries.length;
+  function updateLoadMoreButton(totalFiltered) {
+    if (!DOM.loadMoreContainer) return;
+
+    if (state.currentView !== 'cards' && state.currentView !== 'favorites') {
+      DOM.loadMoreContainer.style.display = 'none';
+      return;
+    }
+
+    if (state.visibleCount >= totalFiltered || totalFiltered === 0) {
+      DOM.loadMoreContainer.style.display = 'none';
+    } else {
+      DOM.loadMoreContainer.style.display = 'flex';
+      const remaining = totalFiltered - state.visibleCount;
+      const nextBatch = Math.min(state.PAGE_SIZE, remaining);
+      if (DOM.loadMoreBadge) {
+        DOM.loadMoreBadge.textContent = `+${nextBatch}`;
+      }
+    }
+  }
+
+  function updateResultsMeta(displayedCount, totalAvailable) {
+    DOM.displayedCount.textContent = displayedCount;
+    DOM.totalAvailableCount.textContent = totalAvailable;
 
     let badgeText = '';
     if (state.currentView === 'favorites') {
-      badgeText = `❤️ Favorites (${count})`;
+      badgeText = `❤️ Favorites (${totalAvailable})`;
     } else if (state.selectedRegion !== 'all') {
       badgeText = `Region: ${state.selectedRegion}`;
     }
@@ -942,6 +973,7 @@
       DOM.countriesGrid.style.display = 'none';
       DOM.resultsMeta.style.display = 'none';
       DOM.controlsSection.style.display = 'none';
+      if (DOM.loadMoreContainer) DOM.loadMoreContainer.style.display = 'none';
       DOM.mapViewContainer.classList.add('active');
       initLeafletMap();
       renderMapMarkers();
@@ -956,6 +988,7 @@
       DOM.countriesGrid.style.display = 'none';
       DOM.resultsMeta.style.display = 'none';
       DOM.controlsSection.style.display = 'none';
+      if (DOM.loadMoreContainer) DOM.loadMoreContainer.style.display = 'none';
       DOM.quizSection.classList.add('active');
       startNewQuizQuestion();
     }
@@ -969,6 +1002,18 @@
     resetAllFilters();
     switchView('cards');
   });
+
+  // Explore More Countries button click
+  if (DOM.loadMoreBtn) {
+    DOM.loadMoreBtn.addEventListener('click', () => {
+      state.visibleCount += state.PAGE_SIZE;
+      const countriesToShow = state.filteredCountries.slice(0, state.visibleCount);
+      renderCountriesGrid(countriesToShow);
+      updateLoadMoreButton(state.filteredCountries.length);
+      updateResultsMeta(countriesToShow.length, state.filteredCountries.length);
+      showToast(`Showing ${countriesToShow.length} of ${state.filteredCountries.length} countries`, 'fa-compass');
+    });
+  }
 
   // ==========================================
   // Search & Filter Event Listeners
