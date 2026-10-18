@@ -154,11 +154,12 @@
   });
 
   // ==========================================
-  // Data Fetching & Normalization (All 250 Nations)
+  // Data Fetching & Normalization (All 250 Nations with Population)
   // ==========================================
-  function normalizeCountriesData(rawData) {
+  function normalizeCountriesData(rawData, popMap = new Map()) {
     return rawData.map(c => {
       const cca2 = (c.cca2 || '').toLowerCase();
+      const cca3 = (c.cca3 || '').toUpperCase();
       const commonName = c.name?.common || 'Unknown';
       const officialName = c.name?.official || commonName;
 
@@ -174,6 +175,22 @@
         currs = c.currencies;
       }
 
+      // Robust population resolution:
+      // 1. Check local authoritative dictionary by CCA3 code
+      // 2. Check live population map by common name
+      // 3. Fallback to raw object population
+      let pop = 0;
+      if (typeof POPULATION_BY_CCA3 !== 'undefined' && POPULATION_BY_CCA3[cca3] !== undefined) {
+        pop = POPULATION_BY_CCA3[cca3];
+      } else {
+        const cleanName = commonName.toLowerCase().trim();
+        if (popMap.has(cleanName)) {
+          pop = popMap.get(cleanName);
+        } else if (typeof c.population === 'number' && c.population > 0) {
+          pop = c.population;
+        }
+      }
+
       return {
         name: {
           common: commonName,
@@ -182,7 +199,7 @@
         capital: cap,
         region: c.region || 'World',
         subregion: c.subregion || '',
-        population: typeof c.population === 'number' ? c.population : 0,
+        population: pop,
         area: typeof c.area === 'number' ? c.area : 0,
         flags: {
           png: `https://flagcdn.com/w320/${cca2}.png`,
@@ -193,7 +210,7 @@
         languages: (c.languages && typeof c.languages === 'object') ? c.languages : null,
         borders: Array.isArray(c.borders) ? c.borders : [],
         cca2: c.cca2 || '',
-        cca3: c.cca3 || '',
+        cca3: cca3,
         latlng: Array.isArray(c.latlng) ? c.latlng : [],
         timezones: Array.isArray(c.timezones) ? c.timezones : [],
         maps: {
@@ -205,20 +222,25 @@
 
   async function fetchCountryData() {
     const DATA_URL = 'https://raw.githubusercontent.com/mledoze/countries/master/countries.json';
+    const POP_URL = 'https://raw.githubusercontent.com/samayo/country-json/master/src/country-by-population.json';
 
-    // 1. Try local storage cache for instant 0ms startup
+    // Clear obsolete zero-population cache
     try {
-      const cached = localStorage.getItem('world_explorer_full_countries_v1');
+      localStorage.removeItem('world_explorer_full_countries_v1');
+    } catch (e) {}
+
+    // 1. Try modern cached dataset with verified positive population
+    try {
+      const cached = localStorage.getItem('world_explorer_full_countries_v2');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 200) {
+        if (Array.isArray(parsed) && parsed.length > 200 && parsed.some(c => c.population > 1000000)) {
           state.allCountries = parsed;
           populateGlobalStats(parsed);
           populateSubregions(parsed);
           populateCompareDropdowns(parsed);
           applyFiltersAndSort();
-          // Silently refresh in background
-          refreshCountriesInBackground(DATA_URL);
+          refreshCountriesInBackground(DATA_URL, POP_URL);
           return;
         }
       }
@@ -226,30 +248,47 @@
       console.warn('Cache lookup failed', e);
     }
 
-    // 2. Fetch full global countries dataset
+    // 2. Fetch full global countries dataset & population concurrently
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 7000);
 
-      const response = await fetch(DATA_URL, { signal: controller.signal });
+      const [countriesRes, popRes] = await Promise.allSettled([
+        fetch(DATA_URL, { signal: controller.signal }),
+        fetch(POP_URL, { signal: controller.signal })
+      ]);
       clearTimeout(timeoutId);
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const rawData = await response.json();
-
-      if (Array.isArray(rawData) && rawData.length > 0) {
-        const normalized = normalizeCountriesData(rawData);
-        state.allCountries = normalized;
+      let popMap = new Map();
+      if (popRes.status === 'fulfilled' && popRes.value.ok) {
         try {
-          localStorage.setItem('world_explorer_full_countries_v1', JSON.stringify(normalized));
+          const popData = await popRes.value.json();
+          if (Array.isArray(popData)) {
+            popData.forEach(item => {
+              if (item && item.country) {
+                popMap.set(item.country.toLowerCase().trim(), Number(item.population) || 0);
+              }
+            });
+          }
         } catch (e) {}
+      }
 
-        populateGlobalStats(normalized);
-        populateSubregions(normalized);
-        populateCompareDropdowns(normalized);
-        applyFiltersAndSort();
-        showToast(`Loaded all ${normalized.length} nations worldwide!`, 'fa-globe');
-        return;
+      if (countriesRes.status === 'fulfilled' && countriesRes.value.ok) {
+        const rawData = await countriesRes.value.json();
+        if (Array.isArray(rawData) && rawData.length > 0) {
+          const normalized = normalizeCountriesData(rawData, popMap);
+          state.allCountries = normalized;
+          try {
+            localStorage.setItem('world_explorer_full_countries_v2', JSON.stringify(normalized));
+          } catch (e) {}
+
+          populateGlobalStats(normalized);
+          populateSubregions(normalized);
+          populateCompareDropdowns(normalized);
+          applyFiltersAndSort();
+          showToast(`Loaded all ${normalized.length} nations with full demographic data!`, 'fa-globe');
+          return;
+        }
       }
       throw new Error('Invalid data payload');
     } catch (err) {
@@ -274,18 +313,31 @@
     }
   }
 
-  async function refreshCountriesInBackground(url) {
+  async function refreshCountriesInBackground(countriesUrl, popUrl) {
     try {
-      const res = await fetch(url);
-      if (!res.ok) return;
-      const raw = await res.json();
-      if (Array.isArray(raw) && raw.length > 200) {
-        const norm = normalizeCountriesData(raw);
-        state.allCountries = norm;
-        localStorage.setItem('world_explorer_full_countries_v1', JSON.stringify(norm));
-        populateGlobalStats(norm);
-        populateSubregions(norm);
-        populateCompareDropdowns(norm);
+      const [cRes, pRes] = await Promise.allSettled([
+        fetch(countriesUrl),
+        fetch(popUrl)
+      ]);
+      let popMap = new Map();
+      if (pRes.status === 'fulfilled' && pRes.value.ok) {
+        const popData = await pRes.value.json();
+        if (Array.isArray(popData)) {
+          popData.forEach(item => {
+            if (item && item.country) popMap.set(item.country.toLowerCase().trim(), Number(item.population) || 0);
+          });
+        }
+      }
+      if (cRes.status === 'fulfilled' && cRes.value.ok) {
+        const raw = await cRes.value.json();
+        if (Array.isArray(raw) && raw.length > 200) {
+          const norm = normalizeCountriesData(raw, popMap);
+          state.allCountries = norm;
+          localStorage.setItem('world_explorer_full_countries_v2', JSON.stringify(norm));
+          populateGlobalStats(norm);
+          populateSubregions(norm);
+          populateCompareDropdowns(norm);
+        }
       }
     } catch (e) {}
   }
