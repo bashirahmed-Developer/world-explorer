@@ -26,6 +26,7 @@
   - Quick links to Google Maps and Wikipedia.
 - **⚖️ Side-by-Side Country Comparison Tool**: Compare any two countries simultaneously with visual percentage progress bars for population and landmass.
 - **🎮 World Geography Quiz**: Test your geography skills with randomized flag-guessing trivia featuring instant scoring and streak tracking.
+- **⚡ Smart Pagination & Explore More**: Displays 20 country cards initially with an interactive **"Explore More Countries (+20)"** centered button for smooth browsing.
 - **❤️ Favorites System**: Bookmark countries to your personal list stored persistently in `localStorage`.
 - **🌓 Seamless Theme Engine**: Fluid dark mode and light mode with persistent user preference storage.
 - **📱 100% Responsive & Accessible**: Optimized for mobile, tablet, and desktop viewports with glassmorphism aesthetic and fluid animations.
@@ -35,8 +36,8 @@
 ## 🚀 Live Demo & Preview
 
 To run the application locally:
-1. Simply double-click `index.html` in your file explorer to open it in any modern web browser.
-2. Or use VS Code **Live Server** extension: Right-click `index.html` and click **"Open with Live Server"**.
+1. Run `node server.js` to start the local development server at `http://localhost:3000/`.
+2. Or simply double-click `index.html` in your file explorer to open it directly in any modern browser.
 
 ---
 
@@ -47,7 +48,8 @@ world-explorer/
 ├── index.html           # Main semantic HTML5 markup & accessible modal containers
 ├── style.css            # Custom CSS3 design system, themes, and responsive layout
 ├── app.js               # Modular ES6+ state management, Leaflet map, quiz, & API logic
-├── countries-data.js    # Built-in offline fallback data cache
+├── countries-data.js    # Built-in offline fallback data cache & population dictionary
+├── server.js            # Lightweight Node.js local development server
 └── README.md            # Comprehensive project documentation
 ```
 
