@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="World Explorer - Interactive Global Geography, Country Data, Leaflet Maps, and Geography Trivia by Bashir Ahmed.">
+  <title>World Explorer | Global Geography & Country Intelligence</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
+  
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Leaflet CSS for World Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ================= Header ================= -->
+  <header class="header">
+    <div class="header-container">
+      <div class="brand" id="brandHomeBtn">
+        <div class="brand-icon">
+          <i class="fa-solid fa-earth-americas"></i>
+        </div>
+        <div class="brand-text">
+          <h1>World Explorer</h1>
+          <p>Global Atlas & Data Hub</p>
+        </div>
+      </div>
+
+      <nav class="header-nav">
+        <button class="nav-btn active" id="viewCardsBtn" title="Grid View">
+          <i class="fa-solid fa-grip"></i>
+          <span>Explore</span>
+        </button>
+        <button class="nav-btn" id="viewMapBtn" title="Interactive Map">
+          <i class="fa-solid fa-map-location-dot"></i>
+          <span>Map</span>
+        </button>
+        <button class="nav-btn" id="viewQuizBtn" title="Geography Quiz">
+          <i class="fa-solid fa-gamepad"></i>
+          <span>Quiz</span>
+        </button>
+        <button class="nav-btn" id="viewFavoritesBtn" title="Saved Favorites">
+          <i class="fa-solid fa-heart"></i>
+          <span>Favorites (<span id="favCount">0</span>)</span>
+        </button>
+        <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme">
+          <i class="fa-solid fa-sun" id="themeIcon"></i>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ================= Hero Section ================= -->
+  <section class="hero" id="heroSection">
+    <div class="hero-content">
+      <div class="hero-tag">
+        <i class="fa-solid fa-compass fa-spin" style="--fa-animation-duration: 15s;"></i>
+        <span>Discover 250+ Countries & Territories</span>
+      </div>
+      <h2>Explore The Planet With <span>Precision Data</span></h2>
+      <p>Search flags, real-time population, capital cities, borders, currencies, languages, and interactive geographic coordinates.</p>
+      
+      <!-- Live Global Summary Pills -->
+      <div class="quick-stats">
+        <div class="stat-pill">
+          <i class="fa-solid fa-flag text-blue-400"></i>
+          <span>Countries: <strong id="totalCountriesStat">250</strong></span>
+        </div>
+        <div class="stat-pill">
+          <i class="fa-solid fa-users text-purple-400"></i>
+          <span>World Pop: <strong id="totalPopulationStat">8.0B</strong></span>
+        </div>
+        <div class="stat-pill">
+          <i class="fa-solid fa-globe text-emerald-400"></i>
+          <span>Continents: <strong id="totalContinentsStat">7</strong></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Controls / Search & Filters ================= -->
+  <section class="controls-section" id="controlsSection">
+    <div class="controls-card">
+      <div class="search-and-sort">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search by country, capital, or code (e.g. Pakistan, Tokyo, USD)..." autocomplete="off">
+          <button id="searchClearBtn" class="search-clear-btn" title="Clear Search">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="dropdown-group">
+          <!-- Sort Options -->
+          <select id="sortSelect" class="custom-select" aria-label="Sort Countries">
+            <option value="name-asc">Sort: Name (A to Z)</option>
+            <option value="name-desc">Sort: Name (Z to A)</option>
+            <option value="pop-desc">Sort: Population (Highest)</option>
+            <option value="pop-asc">Sort: Population (Lowest)</option>
+            <option value="area-desc">Sort: Area (Largest)</option>
+          </select>
+
+          <!-- Subregion / Continent Filter -->
+          <select id="subregionSelect" class="custom-select" aria-label="Subregion Filter">
+            <option value="all">All Subregions</option>
+          </select>
+
+          <!-- Compare Launcher Button -->
+          <button class="nav-btn" id="openCompareBtn" title="Compare two countries side by side">
+            <i class="fa-solid fa-scale-balanced"></i>
+            <span>Compare</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Region Pills -->
+      <div class="region-tags-container" id="regionTagsContainer">
+        <button class="region-pill active" data-region="all">🌍 All Regions</button>
+        <button class="region-pill" data-region="Africa">🌍 Africa</button>
+        <button class="region-pill" data-region="Americas">🌎 Americas</button>
+        <button class="region-pill" data-region="Asia">🌏 Asia</button>
+        <button class="region-pill" data-region="Europe">🌍 Europe</button>
+        <button class="region-pill" data-region="Oceania">🌏 Oceania</button>
+        <button class="region-pill" data-region="Antarctic">❄️ Antarctic</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Interactive Leaflet Map View ================= -->
+  <section class="main-content">
+    <div class="map-view-container" id="mapViewContainer">
+      <div class="map-overlay-card">
+        <i class="fa-solid fa-location-dot"></i> Click any pin to inspect the country!
+      </div>
+      <div id="worldMap"></div>
+    </div>
+
+    <!-- ================= Geography Quiz View ================= -->
+    <div class="quiz-section" id="quizSection">
+      <div class="quiz-header">
+        <div>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">🌍 World Geography Quiz</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Test your knowledge of flags and nations</p>
+        </div>
+        <div class="quiz-score-badge">
+          Score: <span id="quizScore">0</span> / <span id="quizTotal">0</span>
+        </div>
+      </div>
+
+      <div class="quiz-card">
+        <img id="quizFlagImg" class="quiz-flag-display" src="" alt="Quiz Country Flag">
+        <div class="quiz-question-text" id="quizQuestionText">Which country does this flag belong to?</div>
+        
+        <div class="quiz-options-grid" id="quizOptionsGrid">
+          <!-- 4 option buttons will be injected dynamically -->
+        </div>
+
+        <button id="nextQuizBtn" class="reset-btn" style="margin-top: 1rem; display: none;">Next Country <i class="fa-solid fa-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- ================= Results Meta Header ================= -->
+    <div class="results-meta" id="resultsMeta">
+      <div class="results-count">
+        Showing <span id="displayedCount">0</span> of <span id="totalAvailableCount">0</span> countries
+      </div>
+      <div id="activeFilterBadgeContainer"></div>
+    </div>
+
+    <!-- ================= Cards Grid ================= -->
+    <div class="countries-grid" id="countriesGrid">
+      <!-- Skeleton Loaders (replaced on fetch) -->
+      <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-content"><div class="skeleton-line title"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+      <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-content"><div class="skeleton-line title"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+      <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-content"><div class="skeleton-line title"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+      <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-content"><div class="skeleton-line title"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+    </div>
+  </section>
+
+  <!-- ================= Detailed Country Modal ================= -->
+  <div class="modal-overlay" id="countryModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <button class="modal-close-btn" id="modalCloseBtn" aria-label="Close modal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="modal-header-hero">
+        <img id="modalHeroBg" class="modal-hero-flag-bg" src="" alt="Flag Background">
+        <div class="modal-hero-info">
+          <img id="modalHeroThumb" class="modal-hero-flag-thumb" src="" alt="Country Flag">
+          <div class="modal-title-group">
+            <h2 id="modalCountryName">Country Name</h2>
+            <p id="modalOfficialName">Official Name</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <!-- Key Statistics Grid -->
+        <div class="modal-stats-grid">
+          <div class="modal-stat-box">
+            <span class="modal-stat-label"><i class="fa-solid fa-building-columns"></i> Capital</span>
+            <span class="modal-stat-value" id="modalCapital">-</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="modal-stat-label"><i class="fa-solid fa-users"></i> Population</span>
+            <span class="modal-stat-value" id="modalPopulation">-</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="modal-stat-label"><i class="fa-solid fa-globe"></i> Region</span>
+            <span class="modal-stat-value" id="modalRegion">-</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="modal-stat-label"><i class="fa-solid fa-map"></i> Subregion</span>
+            <span class="modal-stat-value" id="modalSubregion">-</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="modal-stat-label"><i class="fa-solid fa-ruler-combined"></i> Total Area</span>
+            <span class="modal-stat-value" id="modalArea">-</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="modal-stat-label"><i class="fa-solid fa-money-bill-wave"></i> Currencies</span>
+            <span class="modal-stat-value" id="modalCurrencies">-</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="modal-stat-label"><i class="fa-solid fa-comments"></i> Languages</span>
+            <span class="modal-stat-value" id="modalLanguages">-</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="modal-stat-label"><i class="fa-solid fa-clock"></i> Timezone</span>
+            <span class="modal-stat-value" id="modalTimezones">-</span>
+          </div>
+        </div>
+
+        <!-- Border Countries Section -->
+        <div class="borders-section">
+          <h4><i class="fa-solid fa-share-nodes"></i> Neighboring Border Countries</h4>
+          <div class="borders-tags-wrapper" id="modalBordersWrapper">
+            <!-- Border chips injected dynamically -->
+          </div>
+        </div>
+
+        <!-- External Exploration Actions -->
+        <div class="modal-actions">
+          <a id="modalGoogleMapsLink" href="#" target="_blank" rel="noopener noreferrer" class="modal-action-btn primary">
+            <i class="fa-solid fa-map-location-dot"></i> View on Google Maps
+          </a>
+          <a id="modalWikiLink" href="#" target="_blank" rel="noopener noreferrer" class="modal-action-btn secondary">
+            <i class="fa-brands fa-wikipedia-w"></i> Wikipedia Article
+          </a>
+          <button id="modalFavToggleBtn" class="modal-action-btn secondary">
+            <i class="fa-regular fa-heart"></i> Add to Favorites
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Country Comparison Modal ================= -->
+  <div class="modal-overlay" id="compareModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <button class="modal-close-btn" id="compareCloseBtn" aria-label="Close Comparison">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="modal-body" style="padding: 2.25rem 2rem;">
+        <h3 style="font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 0.5rem;">
+          <i class="fa-solid fa-scale-balanced text-blue-500"></i> Side-by-Side Country Comparison
+        </h3>
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 1.5rem;">
+          Select any two nations to compare their population, landmass, capital, and indicators.
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+          <select id="compareCountrySelect1" class="custom-select"></select>
+          <select id="compareCountrySelect2" class="custom-select"></select>
+        </div>
+
+        <div class="compare-container" id="compareDetailsContainer">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Toast Container ================= -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ================= Footer ================= -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-links">
+        <a href="https://github.com/bashirahmed-Developer" target="_blank" rel="noopener noreferrer" class="footer-link">
+          <i class="fa-brands fa-github"></i> GitHub Profile
+        </a>
+        <a href="https://restcountries.com" target="_blank" rel="noopener noreferrer" class="footer-link">
+          <i class="fa-solid fa-database"></i> REST Countries API
+        </a>
+        <a href="https://leafletjs.com" target="_blank" rel="noopener noreferrer" class="footer-link">
+          <i class="fa-solid fa-layer-group"></i> Leaflet.js
+        </a>
+      </div>
+      <p class="footer-credits">
+        Designed & Built with ❤️ by <a href="https://github.com/bashirahmed-Developer" target="_blank" rel="noopener noreferrer">Bashir Ahmed</a> &copy; 2026. All rights reserved.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <!-- 1. Offline fallback data -->
+  <script src="countries-data.js"></script>
+  <!-- 2. Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- 3. Main Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>
